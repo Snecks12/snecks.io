@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pokémon Viewer</title>
+    <style>
+        body { font-family: Arial, sans-serif; text-align: center; }
+        #pokemonContainer { 
+            margin: 20px auto; 
+            padding: 20px; 
+            border: 2px solid #333; 
+            width: 300px; 
+            border-radius: 10px; 
+            min-height: 500px;
+        }
+        img { width: 150px; height: 150px; }
+        #searchContainer {
+            margin: 20px auto;
+        }
+        input {
+            padding: 8px;
+            width: 200px;
+            border-radius: 5px;
+            border: 1px solid #ccc;
+        }
+        button {
+            padding: 8px 15px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        #nextButton {
+            background-color: #008CBA;
+        }
+        #nextButton:hover {
+            background-color: #0077a3;
+        }
+    </style>
+</head>
+<body>
+    <h2>Pokémon Viewer</h2>
+    <div id="searchContainer">
+        <input type="text" id="pokemonSearch" placeholder="Enter Pokémon name or ID">
+        <button id="searchButton">Search</button>
+    </div>
+    <div id="pokemonContainer">Loading...</div>
+    <button id="nextButton">Next Pokémon</button>
+
+    <script>
+        let currentId = 1; // Start with the first Pokémon
+
+        async function fetchPokemon(idOrName) {
+            const apiUrl = `https://pokeapi.co/api/v2/pokemon/${idOrName}`;
+            const speciesUrl = `https://pokeapi.co/api/v2/pokemon-species/${idOrName}`;
+
+            console.log("Fetching Pokémon data from:", apiUrl);
+            console.log("Fetching species data from:", speciesUrl);
+
+            try {
+                const [pokemonResponse, speciesResponse] = await Promise.all([
+                    fetch(apiUrl), 
+                    fetch(speciesUrl)
+                ]);
+
+                if (!pokemonResponse.ok || !speciesResponse.ok) {
+                    throw new Error("Failed to fetch Pokémon data");
+                }
+
+                const pokemon = await pokemonResponse.json();
+                const species = await speciesResponse.json();
+
+                // Log the complete API responses to console
+                console.log("Pokémon API Response:", pokemon);
+                console.log("Species API Response:", species);
+
+                // Update currentId to the found Pokémon's ID
+                currentId = pokemon.id;
+
+                // Get the first 4 moves (if available)
+                const moves = pokemon.moves.slice(0, 4).map(move => move.move.name).join(", ") || "No moves available";
+
+                // Get Pokémon types
+                const types = pokemon.types.map(type => type.type.name).join(", ");
+
+                // Get the English description (if available)
+                let description = species.flavor_text_entries.find(entry => entry.language.name === "en");
+                description = description ? description.flavor_text.replace(/\n|\f/g, ' ') : "No description available.";
+
+                // Show Pokémon details
+                document.getElementById("pokemonContainer").innerHTML = `
+                    <h3>${pokemon.name.toUpperCase()} (#${pokemon.id})</h3>
+                    <img src="${pokemon.sprites.front_default}" alt="${pokemon.name}">
+                    <p><strong>Type:</strong> ${types}</p>
+                    <p><strong>Height:</strong> ${pokemon.height / 10} m</p>
+                    <p><strong>Weight:</strong> ${pokemon.weight / 10} kg</p>
+                    <p><strong>Moves:</strong> ${moves}</p>
+                    <p><strong>Description:</strong> ${description}</p>
+                `;
+
+            } catch (error) {
+                console.error("Error fetching Pokémon:", error);
+                document.getElementById("pokemonContainer").innerHTML = "<p>Pokémon not found. Please try another name or ID.</p>";
+            }
+        }
+
+        function fetchNextPokemon() {
+            fetchPokemon(currentId + 1);
+        }
+
+        document.getElementById("nextButton").addEventListener("click", fetchNextPokemon);
+        document.getElementById("searchButton").addEventListener("click", function() {
+            const searchInput = document.getElementById("pokemonSearch").value.trim();
+            if (searchInput) {
+                fetchPokemon(searchInput.toLowerCase());
+            }
+        });
+
+        // Allow pressing Enter in the search field
+        document.getElementById("pokemonSearch").addEventListener("keypress", function(e) {
+            if (e.key === 'Enter') {
+                const searchInput = document.getElementById("pokemonSearch").value.trim();
+                if (searchInput) {
+                    fetchPokemon(searchInput.toLowerCase());
+                }
+            }
+        });
+
+        // Initial fetch to show the first Pokémon
+        fetchPokemon(currentId);
+    </script>
+</body>
+</html>
